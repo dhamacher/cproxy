@@ -23,40 +23,40 @@
 */
 #include "cproxy.h"
 
-
-
-SOCKET get_udp_listener_socket(char *address, char *port) {
-#if defined(_WIN32)
-    WSADATA d;
-    if (WSAStartup(MAKEWORD(2, 2), &d))
-    {
-        fprintf(stderr, "Failed to initailize.\n");
-        return 1;
-    }
-#endif
-    printf("Configuring local address...\n");
+SOCKET connect_to_target_host(char *hostname, char *port)
+{
+    printf("Configuring remote address...\n");
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_PASSIVE;
-
-    struct addrinfo *bind_address;
-    getaddrinfo(address, port, &hints, &bind_address);
+    hints.ai_socktype = SOCK_STREAM;
+    struct addrinfo *peer_address;
+    if (getaddrinfo(hostname, port, &hints, &peer_address)) {
+        fprintf(stderr, "getaddrinfo() failed. (%d)\n", GETSOCKETERRNO());
+        exit(1);
+    }
+    printf("Remote address is: ");
+    char address_buffer[100];
+    char service_buffer[100];
+    getnameinfo(peer_address->ai_addr, peer_address->ai_addrlen,
+                address_buffer, sizeof(address_buffer),
+                service_buffer, sizeof(service_buffer),
+                NI_NUMERICHOST);
+    printf("%s %s\n", address_buffer, service_buffer);
     printf("Creating socket...\n");
-    SOCKET socket_listen;
-    socket_listen = socket(bind_address->ai_family,
-                           bind_address->ai_socktype, bind_address->ai_protocol);
-    if (!ISVALIDSOCKET(socket_listen)) {
-        fprintf(stderr, "sock() failed. (%d)\n", GETSOCKETERRNO());
-        return 1;
+    SOCKET server;
+    server = socket(peer_address->ai_family,
+                    peer_address->ai_socktype, peer_address->ai_protocol);
+    if (!ISVALIDSOCKET(server)) {
+        fprintf(stderr, "socket() failed. (%d)\n", GETSOCKETERRNO());
+        exit(1);
     }
-    printf("Binding socket to local address...\n");
-    if (bind(socket_listen, bind_address->ai_addr, bind_address->ai_addrlen)) {
-        fprintf(stderr, "bind() failed. (%d)\n", GETSOCKETERRNO());
-        return 1;
+    printf("Connecting...\n");
+    if (connect(server,
+                peer_address->ai_addr, peer_address->ai_addrlen)) {
+        fprintf(stderr, "connect() failed. (%d)\n", GETSOCKETERRNO());
+        exit(1);
     }
-    freeaddrinfo(bind_address);
-
-    return socket_listen;
+    freeaddrinfo(peer_address);
+    printf("Connected.\n\n");
+    return server;
 }

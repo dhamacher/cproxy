@@ -25,6 +25,7 @@
 #if defined(_WIN32)
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0600
+#define MAX_PACKET_SIZE 1024
 #endif
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -53,6 +54,6 @@
 #include <string.h>
 
 SOCKET get_udp_listener_socket(char *address, char *port);
-int send_udp_packet(char *address, char *port, char *message, int batch_size);
-int start_udp_tcp_proxy_server(char *address, char *port, char *proxy_address, char *proxy_port);
-int start_udp_server();
+SOCKET connect_to_target_host(char *hostname, char *port);
+DWORD WINAPI win32_send_to_eventhub(LPVOID data);
+void *posix_send_to_eventhub(void *args);
